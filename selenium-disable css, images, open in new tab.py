@@ -4,6 +4,8 @@ from selenium.webdriver.common.by import By
 from undetected_chromedriver import Chrome, ChromeOptions
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 import random
 import pandas as pd
 import time
@@ -156,6 +158,29 @@ def get_geolocations():
 
 def get_elements(element):
     title = element.find_elements(By.TAG_NAME, 'td')[0].find_elements(By.TAG_NAME, 'div')[0].get_attribute('innerText')
+    
+    product_link = driver.find_element(By.XPATH, '//*[@id="app"]/div/div[2]/main/div/div[2]/div[2]/div/div/div/div[2]/div/div[2]/a')
+    # product_link = driver.find_element(By.XPATH, '//*[@id="app"]/div/div[2]/main/div/div[2]/div[2]/div/div/div/div[2]/div/div[2]/a').get_attribute('href')
+    # print(product_link)
+
+    # open the URL in a new tab
+    actions = ActionChains(driver)
+    actions.key_down(Keys.CONTROL).click(product_link).key_up(Keys.CONTROL).perform()
+
+    # switch to the new tab
+    driver.switch_to.window(driver.window_handles[-1])
+    time.sleep(2)
+    # get the URL of the new tab
+    product_link = driver.current_url
+
+    # do something with the new URL
+    # print(product_link)
+
+    # close the new tab
+    driver.close()
+
+    # switch back to the original tab
+    driver.switch_to.window(driver.window_handles[0])
 
     elements = driver.find_element(By.XPATH, modal_xpath).find_elements(By.TAG_NAME, "dd")
     affilication_type = elements[0].get_attribute('innerText')
@@ -175,7 +200,7 @@ def get_elements(element):
         round_element = round_elements[i].get_attribute('innerText')
         rounds.append(round_element)
     
-    data = {"title": title, "type": affilication_type, "platform": affilication_platform, "product_type": product_type, "geolocation": geolocation, "commission_0": commission_0, "commission_1": commission_1, "tags": rounds}
+    data = {"title": title, "type": affilication_type, "platform": affilication_platform, "product_type": product_type, "product_link": product_link, "geolocation": geolocation, "commission_0": commission_0, "commission_1": commission_1, "tags": rounds}
     
     numbers = re.findall(r'\d+\.\d+|\d+', commission_0)
     if(len(numbers) > 0):
@@ -187,7 +212,6 @@ def get_elements(element):
         number = float(numbers[0])
         data['num_commission_1'] = number
 
-    # print(data)
     json.dump(data, programs_file)
     programs_file.write('\n')
 
@@ -223,6 +247,15 @@ def get_random_rgbcolor():
     b = random.randint(100,255)
     rgb = "rgb" + str((r,g,b))
     return rgb;
+
+def setStatus(status):
+    # Find the first document in the collection and update it
+    collection = db["schedules"]
+    query = {}
+    new_values = { "$set": { "running": status } }
+    updated_doc = collection.find_one_and_update(query, new_values)
+    # Print the updated document
+    print(updated_doc)
 
 def save_into_database():
     # Check if the collection exists
@@ -319,10 +352,14 @@ def scrape_site():
     save_into_database()
     print("Saved Success")
 
+
+
 def main():
+    setStatus(True)
     log_in()
     scrape_site()
-    
+    setStatus(False)
+
 if __name__ == '__main__':
     main()
 
